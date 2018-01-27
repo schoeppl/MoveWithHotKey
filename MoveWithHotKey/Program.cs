@@ -25,12 +25,16 @@ namespace MoveWithHotKey
             //Application.Run(new ConfigurationForm());
             Application.Run(new MoveToAppContext());
         }
+
         public class MoveToAppContext : ApplicationContext
         {
+
+            private KeyboardHook keyboardHook = new KeyboardHook();
+
             private NotifyIcon trayIcon;
 
             private HotKey moveToNice;
-
+            
             public MoveToAppContext()
             {
                 // Initialize Tray Icon
@@ -41,8 +45,13 @@ namespace MoveWithHotKey
                 this.trayIcon.ContextMenu.MenuItems.Add(new MenuItem("Exit", Exit));
                 this.trayIcon.Visible = true;
 
-                //Init HotKeys
-                moveToNice = new HotKey(Key.M, KeyModifier.Shift | KeyModifier.NoRepeat, OnMoveToNice);
+                keyboardHook.KeyPressed += new EventHandler<KeyPressedEventArgs>(anyKeyPress);
+                keyboardHook.RegisterHotKey(ModifierKeys.Shift, Keys.M);
+            }
+
+            private void anyKeyPress(object sender, KeyPressedEventArgs e)
+            {
+                throw new NotImplementedException();
             }
 
             void Exit(object sender, EventArgs e)
