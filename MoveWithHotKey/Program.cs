@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
@@ -31,9 +32,9 @@ namespace MoveWithHotKey
 
             private KeyboardHook keyboardHook = new KeyboardHook();
 
-            private NotifyIcon trayIcon;
+            private string TargetFolder = "VIP";
 
-            private HotKey moveToNice;
+            private NotifyIcon trayIcon;
             
             public MoveToAppContext()
             {
@@ -45,31 +46,45 @@ namespace MoveWithHotKey
                 this.trayIcon.ContextMenu.MenuItems.Add(new MenuItem("Exit", Exit));
                 this.trayIcon.Visible = true;
 
-                keyboardHook.KeyPressed += new EventHandler<KeyPressedEventArgs>(anyKeyPress);
+                keyboardHook.KeyPressed += new EventHandler<KeyPressedEventArgs>(HookKeyPressed);
                 keyboardHook.RegisterHotKey(ModifierKeys.Shift, Keys.M);
             }
 
-            private void anyKeyPress(object sender, KeyPressedEventArgs e)
+            private void HookKeyPressed(object sender, KeyPressedEventArgs e)
             {
-                throw new NotImplementedException();
+                List<string> filelist = getSelectedItems();
+                
+                if(e.Modifier == ModifierKeys.Shift && e.Key == Keys.M)
+                {
+                    MoveFilesToVIP(filelist);
+                }
             }
 
+            private void MoveFilesToVIP(List<string> filelist)
+            {
+                foreach (var file in filelist)
+                {
+                    DirectoryInfo directoryInfo = System.IO.Directory.GetParent(file);
+                    CheckAndCreateTargetDir(directoryInfo.ToString() + "\\" + TargetFolder);
+                    File.Move(file, directoryInfo.ToString() + "\\" + TargetFolder + "\\" + Path.GetFileName(file));
+                }
+            }
+
+            private void CheckAndCreateTargetDir (string dir)
+            {
+                if (!System.IO.Directory.Exists(dir))
+                {
+                    System.IO.Directory.CreateDirectory(dir);
+                }
+            }
             void Exit(object sender, EventArgs e)
             {
                 // Hide tray icon, otherwise it will remain shown until user mouses over it
                 this.trayIcon.Visible = false;
-                moveToNice.Dispose();
+                keyboardHook.Dispose();
                 Application.Exit();
             }
 
-            private void OnMoveToNice(HotKey hotKey)
-            {
-                var items = getSelectedItems();
-                foreach (var item in items)
-                {
-                    MessageBox.Show(item);
-                }
-            }
 
             private List<string> getSelectedItems()
             {
