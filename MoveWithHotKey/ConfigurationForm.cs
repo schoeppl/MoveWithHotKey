@@ -24,7 +24,7 @@ namespace MoveWithHotKey
         private string defaultFolder = "VIP";
         private Keys defaultKey = Keys.M;
         private MoveWithHotKey.ModifierKeys defaultModifierKey = MoveWithHotKey.ModifierKeys.Shift;
-        private int defaultWaitingTimeForFocus = 300;
+        private int defaultWaitingTimeForFocus = 800;
         private bool defaultDoOverwrite = false;
 
         private string savedFolder;
@@ -130,7 +130,7 @@ namespace MoveWithHotKey
             {
                 List<string> filelist = GetSelectedItems();
                 HotKeyActionSelect(e, filelist);
-                SetSelectToFocusedItem();
+                SetSelectToFocusedItem(filelist);
             }
         }
 
@@ -219,19 +219,36 @@ namespace MoveWithHotKey
             }
         }
 
-        private void SetSelectToFocusedItem()
+        private void SetSelectToFocusedItem(List<string> doNotFocusOn)
         {
-            Thread.Sleep(savedWaitingTimeForFocus);
-
             IntPtr handle = GetForegroundWindow();
             foreach (SHDocVw.InternetExplorer window in shell.Windows())
             {
                 if (window.HWND == (int)handle)
                 {
-                    Shell32.FolderItem item = ((Shell32.IShellFolderViewDual2)window.Document).FocusedItem;
-                    if (item != null)
+                    WaitAndTryToFocus(doNotFocusOn, window);
+                }
+            }
+        }
+
+        private void WaitAndTryToFocus(List<string> doNotFocusOn, SHDocVw.InternetExplorer window)
+        {
+            bool done = false;
+            int waited = 0;
+            while (!done && waited < savedWaitingTimeForFocus)
+            {
+                Shell32.FolderItem item = ((Shell32.IShellFolderViewDual2)window.Document).FocusedItem;
+                if (item != null)
+                {
+                    if (doNotFocusOn.Contains(item.Path))
+                    {
+                        waited += 100;
+                        Thread.Sleep(100);
+                    }
+                    else
                     {
                         ((Shell32.IShellFolderViewDual2)window.Document).SelectItem(item, (int)SVSIF.SVSI_SELECT);
+                        done = true;
                     }
                 }
             }

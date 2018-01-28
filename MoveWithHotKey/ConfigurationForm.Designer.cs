@@ -256,7 +256,7 @@
             this.groupBox4.Size = new System.Drawing.Size(420, 54);
             this.groupBox4.TabIndex = 16;
             this.groupBox4.TabStop = false;
-            this.groupBox4.Text = "Waiting Time for Focus (higher is better is slower)";
+            this.groupBox4.Text = "Maximum waiting time for focus";
             // 
             // cb_waitingTime
             // 
