@@ -8,6 +8,7 @@ using System.Windows.Forms;
 
 namespace MoveWithHotKey
 {
+    //SOURCE: https://stackoverflow.com/questions/2450373/set-global-hotkeys-using-c-sharp
     public sealed class KeyboardHook : IDisposable
     {
         // Registers a hot key with Windows.

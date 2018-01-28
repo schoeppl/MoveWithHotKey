@@ -47,9 +47,17 @@ namespace MoveWithHotKey
             InitializeNotifyIcon();
             InitializeKeyboardHook();
             InitializeShell();
+
             LoadCurrentConfig();
             RegisterHotKey();
+        }
 
+        private void InitializeModifierList()
+        {
+            this.lb_ModifierKeys.Items.Add(MoveWithHotKey.ModifierKeys.Alt);
+            this.lb_ModifierKeys.Items.Add(MoveWithHotKey.ModifierKeys.Control);
+            this.lb_ModifierKeys.Items.Add(MoveWithHotKey.ModifierKeys.Shift);
+            this.lb_ModifierKeys.Items.Add(MoveWithHotKey.ModifierKeys.Win);
         }
 
         private void InitializeWaitintTimeBox()
@@ -57,8 +65,38 @@ namespace MoveWithHotKey
             for (int i = 0; i <= 10; i++)
             {
                 cb_waitingTime.Items.Add(i * 100);
-            }
-            
+            }   
+        }
+
+        private void InitializeDefaults()
+        {
+            savedFolder = defaultFolder;
+            savedKey = tempKey = defaultKey;
+            savedModifier = defaultModifierKey;
+            savedDoOverwrite = defaultDoOverwrite;
+            savedWaitingTimeForFocus = tempWaitingTimeForFocus = defaultWaitingTimeForFocus;
+        }
+
+        private void InitializeNotifyIcon()
+        {
+            SetNotifyIconText();
+            this.notifyIcon.Icon = Properties.Resources.moveapp;
+            this.notifyIcon.ContextMenu = new ContextMenu();
+            this.notifyIcon.ContextMenu.MenuItems.Add(new MenuItem("Exit", Exit));
+            this.notifyIcon.ContextMenu.MenuItems.Add(new MenuItem("Config", Config));
+            this.notifyIcon.BalloonTipText = "Don't forgett to close the app, when you are done";
+            this.notifyIcon.Visible = false;
+        }
+
+        private void SetNotifyIconText()
+        {
+            this.notifyIcon.Text = "Moves selection into Folder `" + savedFolder + "` (`" + savedModifier.ToString() + "` + `" + savedKey.ToString() + "`)";
+        }
+
+        private void InitializeKeyboardHook()
+        {
+            keyboardHook = new KeyboardHook();
+            keyboardHook.KeyPressed += new EventHandler<KeyPressedEventArgs>(HookKeyPressed);
         }
 
         private void InitializeShell()
@@ -75,69 +113,15 @@ namespace MoveWithHotKey
             ResetTempValues();
         }
 
-        private void ResetTempValues()
-        {
-            tempWaitingTimeForFocus = savedWaitingTimeForFocus;
-            tempKey = savedKey;
-        }
-
-        private void InitializeModifierList()
-        {
-            this.lb_ModifierKeys.Items.Add(MoveWithHotKey.ModifierKeys.Alt);
-            this.lb_ModifierKeys.Items.Add(MoveWithHotKey.ModifierKeys.Control);
-            this.lb_ModifierKeys.Items.Add(MoveWithHotKey.ModifierKeys.Shift);
-            this.lb_ModifierKeys.Items.Add(MoveWithHotKey.ModifierKeys.Win);
-        }
-
-        private void InitializeDefaults()
-        {
-            savedFolder = defaultFolder;
-            savedKey = tempKey = defaultKey;
-            savedModifier = defaultModifierKey;
-            savedDoOverwrite = defaultDoOverwrite;
-            savedWaitingTimeForFocus = tempWaitingTimeForFocus = defaultWaitingTimeForFocus;
-        }
-
-        private void InitializeNotifyIcon()
-        {
-            SetNotifyIconText();
-            this.notifyIcon.Icon = Properties.Resources.moveapp;
-            //this.notifyIcon.Icon = new System.Drawing.Icon("moveapp.ico");
-            this.notifyIcon.ContextMenu = new ContextMenu();
-            this.notifyIcon.ContextMenu.MenuItems.Add(new MenuItem("Exit", Exit));
-            this.notifyIcon.ContextMenu.MenuItems.Add(new MenuItem("Config", Config));
-            this.notifyIcon.BalloonTipText = "Don't forgett to close the app, when you are done";
-            this.notifyIcon.Visible = false;
-        }
-
-        private void SetNotifyIconText()
-        {
-            this.notifyIcon.Text = "Moves selection into Folder `"+ savedFolder + "` (`" + savedModifier.ToString() + "` + `" + savedKey.ToString() + "`)";
-        }
-        private void InitializeKeyboardHook()
-        {
-            keyboardHook = new KeyboardHook();
-            keyboardHook.KeyPressed += new EventHandler<KeyPressedEventArgs>(HookKeyPressed);
-        }
-
         private void RegisterHotKey()
         {
             keyboardHook.RegisterHotKey(savedModifier, savedKey);
         }
 
-        private void ConfigurationForm_Resize(object sender, EventArgs e)
+        private void ResetTempValues()
         {
-            if (FormWindowState.Minimized == this.WindowState)
-            {
-                notifyIcon.Visible = true;
-                notifyIcon.ShowBalloonTip(500);
-                this.Hide();
-            }
-
-            else if (FormWindowState.Normal == this.WindowState)
-            {
-                notifyIcon.Visible = false;
-            }
+            tempWaitingTimeForFocus = savedWaitingTimeForFocus;
+            tempKey = savedKey;
         }
 
         private void HookKeyPressed(object sender, KeyPressedEventArgs e)
@@ -148,6 +132,24 @@ namespace MoveWithHotKey
                 HotKeyActionSelect(e, filelist);
                 SetSelectToFocusedItem();
             }
+        }
+
+        private List<string> GetSelectedItems()
+        {
+            IntPtr handle = GetForegroundWindow();
+            List<string> selected = new List<string>();
+            foreach (SHDocVw.InternetExplorer window in shell.Windows())
+            {
+                if (window.HWND == (int)handle)
+                {
+                    Shell32.FolderItems items = ((Shell32.IShellFolderViewDual2)window.Document).SelectedItems();
+                    foreach (Shell32.FolderItem item in items)
+                    {
+                        if (!item.IsFolder) selected.Add(item.Path);
+                    }
+                }
+            }
+            return selected;
         }
 
         private void HotKeyActionSelect(KeyPressedEventArgs e, List<string> filelist)
@@ -179,15 +181,11 @@ namespace MoveWithHotKey
             }
         }
 
-        private static void MoveFile(string file, string targetPath)
+        private void CheckAndCreateTargetDir(string dir)
         {
-            try
+            if (!System.IO.Directory.Exists(dir))
             {
-                File.Move(file, targetPath);
-            }
-            catch (Exception e)
-            {
-                MessageBox.Show(e.Message);
+                System.IO.Directory.CreateDirectory(dir);
             }
         }
 
@@ -209,48 +207,16 @@ namespace MoveWithHotKey
             return path;
         }
 
-        private void CheckAndCreateTargetDir(string dir)
+        private static void MoveFile(string file, string targetPath)
         {
-            if (!System.IO.Directory.Exists(dir))
+            try
             {
-                System.IO.Directory.CreateDirectory(dir);
+                File.Move(file, targetPath);
             }
-        }
-
-        void Exit(object sender, EventArgs e)
-        {
-            // Hide tray icon, otherwise it will remain shown until user mouses over it
-            this.notifyIcon.Visible = false;
-            keyboardHook.Dispose();
-            Application.Exit();
-        }
-
-        private void Config(object sender, EventArgs e)
-        {
-            this.notifyIcon.Visible = false;
-            this.Show();
-            if (this.WindowState == FormWindowState.Minimized)
+            catch (Exception e)
             {
-                this.WindowState = FormWindowState.Normal;
+                MessageBox.Show(e.Message);
             }
-        }
-
-        private List<string> GetSelectedItems()
-        {
-            IntPtr handle = GetForegroundWindow();
-            List<string> selected = new List<string>();
-            foreach (SHDocVw.InternetExplorer window in shell.Windows())
-            {
-                if (window.HWND == (int)handle)
-                {
-                    Shell32.FolderItems items = ((Shell32.IShellFolderViewDual2)window.Document).SelectedItems();
-                    foreach (Shell32.FolderItem item in items)
-                    {
-                        if(!item.IsFolder) selected.Add(item.Path);
-                    }
-                }
-            }
-            return selected;
         }
 
         private void SetSelectToFocusedItem()
@@ -271,11 +237,46 @@ namespace MoveWithHotKey
             }
         }
 
+        //Form Events
+
+        private void ConfigurationForm_Resize(object sender, EventArgs e)
+        {
+            if (FormWindowState.Minimized == this.WindowState)
+            {
+                notifyIcon.Visible = true;
+                notifyIcon.ShowBalloonTip(500);
+                this.Hide();
+            }
+
+            else if (FormWindowState.Normal == this.WindowState)
+            {
+                notifyIcon.Visible = false;
+            }
+        }
+
         private void ConfigurationForm_FormClosing(object sender, FormClosingEventArgs e)
         {
             if(keyboardHook != null)
             {
                 keyboardHook.Dispose();
+            }
+        }
+
+        void Exit(object sender, EventArgs e)
+        {
+            // Hide tray icon, otherwise it will remain shown until user mouses over it
+            this.notifyIcon.Visible = false;
+            keyboardHook.Dispose();
+            Application.Exit();
+        }
+
+        private void Config(object sender, EventArgs e)
+        {
+            this.notifyIcon.Visible = false;
+            this.Show();
+            if (this.WindowState == FormWindowState.Minimized)
+            {
+                this.WindowState = FormWindowState.Normal;
             }
         }
 
@@ -320,18 +321,15 @@ namespace MoveWithHotKey
             e.Handled = true;
         }
 
-        /// <summary>
-        /// The enumeration of possible modifiers.
-        /// </summary>
+        private void cb_waitingTime_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            tempWaitingTimeForFocus = (int)cb_waitingTime.Items[cb_waitingTime.SelectedIndex];
+        }
+
         [Flags]
         public enum SVSIF : uint
         {
             SVSI_SELECT = 1
-        }
-
-        private void cb_waitingTime_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            tempWaitingTimeForFocus = (int)cb_waitingTime.Items[cb_waitingTime.SelectedIndex];
         }
     }
 }
