@@ -69,7 +69,8 @@ namespace MoveWithHotKey
         private void InitializeNotifyIcon()
         {
             SetNotifyIconText();
-            this.notifyIcon.Icon = new System.Drawing.Icon("moveapp.ico");
+            this.notifyIcon.Icon = Properties.Resources.moveapp;
+            //this.notifyIcon.Icon = new System.Drawing.Icon("moveapp.ico");
             this.notifyIcon.ContextMenu = new ContextMenu();
             this.notifyIcon.ContextMenu.MenuItems.Add(new MenuItem("Exit", Exit));
             this.notifyIcon.ContextMenu.MenuItems.Add(new MenuItem("Config", Config));
