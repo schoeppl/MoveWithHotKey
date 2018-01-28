@@ -19,38 +19,77 @@ namespace MoveWithHotKey
 
         private KeyboardHook keyboardHook;
 
-        private string TargetFolder = "VIP";
+        private string defaultFolder = "VIP";
+        private Keys defaultKey = Keys.M;
+        private MoveWithHotKey.ModifierKeys defaultModifierKey = MoveWithHotKey.ModifierKeys.Shift;
+
+        private string savedFolder;
+        private Keys savedKey;
+        private MoveWithHotKey.ModifierKeys savedModifier;
+        private bool savedDoOverwrite = false;
+
+        private Keys tempKey;
+
+        private bool valideKeyEntered = false;
 
         public ConfigurationForm()
         {
             InitializeComponent();
-
+            InitializeModifierList();
+            InitializeDefaults();
             InitializeNotifyIcon();
-
             InitializeKeyboardHook();
+            LoadCurrentConfig();
+            RegisterHotKey();
+        }
 
-            RegisterHotKeys();
+        private void LoadCurrentConfig()
+        {
+            tb_path.Text = savedFolder;
+            tb_key.Text = savedKey.ToString();
+            lb_ModifierKeys.SelectedIndex = lb_ModifierKeys.Items.IndexOf(savedModifier);
+        }
+
+        private void InitializeModifierList()
+        {
+            this.lb_ModifierKeys.Items.Add(MoveWithHotKey.ModifierKeys.Alt);
+            this.lb_ModifierKeys.Items.Add(MoveWithHotKey.ModifierKeys.Control);
+            this.lb_ModifierKeys.Items.Add(MoveWithHotKey.ModifierKeys.Shift);
+            this.lb_ModifierKeys.Items.Add(MoveWithHotKey.ModifierKeys.Win);
+        }
+
+        private void InitializeDefaults()
+        {
+            savedFolder = defaultFolder;
+            savedKey = defaultKey;
+            tempKey = defaultKey;
+            savedModifier = defaultModifierKey;
         }
 
         private void InitializeNotifyIcon()
         {
-            this.notifyIcon.Text = "Moves selection into Folder `VIP` (`shift` + `m`)";
+            SetNotifyIconText();
             this.notifyIcon.Icon = new System.Drawing.Icon("moveapp.ico");
             this.notifyIcon.ContextMenu = new ContextMenu();
             this.notifyIcon.ContextMenu.MenuItems.Add(new MenuItem("Exit", Exit));
             this.notifyIcon.ContextMenu.MenuItems.Add(new MenuItem("Config", Config));
             this.notifyIcon.BalloonTipText = "Don't forgett to close the app, when you are done";
+            this.notifyIcon.Visible = false;
         }
 
+        private void SetNotifyIconText()
+        {
+            this.notifyIcon.Text = "Moves selection into Folder `"+ savedFolder + "` (`" + savedModifier.ToString() + "` + `" + savedKey.ToString() + "`)";
+        }
         private void InitializeKeyboardHook()
         {
             keyboardHook = new KeyboardHook();
             keyboardHook.KeyPressed += new EventHandler<KeyPressedEventArgs>(HookKeyPressed);
         }
 
-        private void RegisterHotKeys()
+        private void RegisterHotKey()
         {
-            keyboardHook.RegisterHotKey(MoveWithHotKey.ModifierKeys.Shift, Keys.M);
+            keyboardHook.RegisterHotKey(savedModifier, savedKey);
         }
 
         private void ConfigurationForm_Resize(object sender, EventArgs e)
@@ -74,21 +113,63 @@ namespace MoveWithHotKey
             {
                 List<string> filelist = getSelectedItems();
 
-                if (e.Modifier == MoveWithHotKey.ModifierKeys.Shift && e.Key == Keys.M)
+                if (e.Modifier == savedModifier && e.Key == savedKey)
                 {
-                    MoveFilesToVIP(filelist);
+                    MoveFilesRelativ(filelist);
                 }
             }
         }
 
-        private void MoveFilesToVIP(List<string> filelist)
+        private void MoveFilesRelativ(List<string> filelist)
         {
             foreach (var file in filelist)
             {
                 DirectoryInfo directoryInfo = System.IO.Directory.GetParent(file);
-                CheckAndCreateTargetDir(directoryInfo.ToString() + "\\" + TargetFolder);
-                File.Move(file, directoryInfo.ToString() + "\\" + TargetFolder + "\\" + Path.GetFileName(file));
+                string targetDir = directoryInfo.ToString() + "\\" + savedFolder;
+                CheckAndCreateTargetDir(targetDir);
+
+                string targetPath = directoryInfo.ToString() + "\\" + savedFolder + "\\" + Path.GetFileName(file);
+                if (savedDoOverwrite)
+                {
+                    throw new NotImplementedException();
+                }
+                else
+                {
+                    targetPath = FindValideTargetFilename(targetDir, Path.GetFileName(file));
+                }
+                MoveFile(file, targetPath);
+
             }
+        }
+
+        private static void MoveFile(string file, string targetPath)
+        {
+            try
+            {
+                File.Move(file, targetPath);
+            }
+            catch (Exception e)
+            {
+                MessageBox.Show(e.Message);
+            }
+        }
+
+        private string FindValideTargetFilename(string targetDir, string fileName)
+        {
+            string path = targetDir + "\\" + fileName;
+            string extension = Path.GetExtension(path);
+            int c = 1;
+
+            if (File.Exists(path))
+            {
+                while (File.Exists(path.Insert(path.Length - (extension.Length), "_" + c)))
+                {
+                    c++;
+                }
+                path = path.Insert(path.Length - (extension.Length), "_" + c);
+            }
+
+            return path;
         }
 
         private void CheckAndCreateTargetDir(string dir)
@@ -115,7 +196,6 @@ namespace MoveWithHotKey
             {
                 this.WindowState = FormWindowState.Normal;
             }
-            
         }
 
         private List<string> getSelectedItems()
@@ -143,6 +223,46 @@ namespace MoveWithHotKey
             {
                 keyboardHook.Dispose();
             }
+        }
+
+        private void but_save_Click(object sender, EventArgs e)
+        {
+            savedFolder = tb_path.Text;
+            savedKey = tempKey;
+            savedModifier = (MoveWithHotKey.ModifierKeys)lb_ModifierKeys.Items[lb_ModifierKeys.SelectedIndex];
+            keyboardHook.Dispose();
+            InitializeKeyboardHook();
+            RegisterHotKey();
+            SetNotifyIconText();
+        }
+
+        private void but_load_Click(object sender, EventArgs e)
+        {
+            LoadCurrentConfig();
+        }
+
+        private void tb_key_KeyDown(object sender, KeyEventArgs e)
+        {
+            valideKeyEntered = false;
+
+            if (e.KeyCode >= Keys.A && e.KeyCode <= Keys.Z)
+            {
+                valideKeyEntered = true;
+                tempKey = e.KeyCode;
+            }else
+            {
+                MessageBox.Show("Please use a valide key (A - Z)");
+            }
+        }
+
+        private void tb_key_KeyPress(object sender, KeyPressEventArgs e)
+        {
+            if (valideKeyEntered)
+            {
+                tb_key.Text = tempKey.ToString();
+            }
+
+            e.Handled = true;
         }
     }
 }
