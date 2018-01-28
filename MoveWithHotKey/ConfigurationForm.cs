@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -18,17 +19,22 @@ namespace MoveWithHotKey
         static extern IntPtr GetForegroundWindow();
 
         private KeyboardHook keyboardHook;
+        private Shell32.Shell shell;
 
         private string defaultFolder = "VIP";
         private Keys defaultKey = Keys.M;
         private MoveWithHotKey.ModifierKeys defaultModifierKey = MoveWithHotKey.ModifierKeys.Shift;
+        private int defaultWaitingTimeForFocus = 300;
+        private bool defaultDoOverwrite = false;
 
         private string savedFolder;
         private Keys savedKey;
         private MoveWithHotKey.ModifierKeys savedModifier;
-        private bool savedDoOverwrite = false;
+        private int savedWaitingTimeForFocus;
+        private bool savedDoOverwrite;
 
         private Keys tempKey;
+        private int tempWaitingTimeForFocus;
 
         private bool valideKeyEntered = false;
 
@@ -36,11 +42,28 @@ namespace MoveWithHotKey
         {
             InitializeComponent();
             InitializeModifierList();
+            InitializeWaitintTimeBox();
             InitializeDefaults();
             InitializeNotifyIcon();
             InitializeKeyboardHook();
+            InitializeShell();
             LoadCurrentConfig();
             RegisterHotKey();
+
+        }
+
+        private void InitializeWaitintTimeBox()
+        {
+            for (int i = 0; i <= 10; i++)
+            {
+                cb_waitingTime.Items.Add(i * 100);
+            }
+            
+        }
+
+        private void InitializeShell()
+        {
+            shell = new Shell32.Shell();
         }
 
         private void LoadCurrentConfig()
@@ -48,6 +71,14 @@ namespace MoveWithHotKey
             tb_path.Text = savedFolder;
             tb_key.Text = savedKey.ToString();
             lb_ModifierKeys.SelectedIndex = lb_ModifierKeys.Items.IndexOf(savedModifier);
+            cb_waitingTime.SelectedIndex = cb_waitingTime.Items.IndexOf(savedWaitingTimeForFocus);
+            ResetTempValues();
+        }
+
+        private void ResetTempValues()
+        {
+            tempWaitingTimeForFocus = savedWaitingTimeForFocus;
+            tempKey = savedKey;
         }
 
         private void InitializeModifierList()
@@ -61,9 +92,10 @@ namespace MoveWithHotKey
         private void InitializeDefaults()
         {
             savedFolder = defaultFolder;
-            savedKey = defaultKey;
-            tempKey = defaultKey;
+            savedKey = tempKey = defaultKey;
             savedModifier = defaultModifierKey;
+            savedDoOverwrite = defaultDoOverwrite;
+            savedWaitingTimeForFocus = tempWaitingTimeForFocus = defaultWaitingTimeForFocus;
         }
 
         private void InitializeNotifyIcon()
@@ -112,12 +144,17 @@ namespace MoveWithHotKey
         {
             if(this.WindowState == FormWindowState.Minimized)
             {
-                List<string> filelist = getSelectedItems();
+                List<string> filelist = GetSelectedItems();
+                HotKeyActionSelect(e, filelist);
+                SetSelectToFocusedItem();
+            }
+        }
 
-                if (e.Modifier == savedModifier && e.Key == savedKey)
-                {
-                    MoveFilesRelativ(filelist);
-                }
+        private void HotKeyActionSelect(KeyPressedEventArgs e, List<string> filelist)
+        {
+            if (e.Modifier == savedModifier && e.Key == savedKey)
+            {
+                MoveFilesRelativ(filelist);
             }
         }
 
@@ -139,7 +176,6 @@ namespace MoveWithHotKey
                     targetPath = FindValideTargetFilename(targetDir, Path.GetFileName(file));
                 }
                 MoveFile(file, targetPath);
-
             }
         }
 
@@ -199,11 +235,10 @@ namespace MoveWithHotKey
             }
         }
 
-        private List<string> getSelectedItems()
+        private List<string> GetSelectedItems()
         {
             IntPtr handle = GetForegroundWindow();
             List<string> selected = new List<string>();
-            var shell = new Shell32.Shell();
             foreach (SHDocVw.InternetExplorer window in shell.Windows())
             {
                 if (window.HWND == (int)handle)
@@ -211,11 +246,29 @@ namespace MoveWithHotKey
                     Shell32.FolderItems items = ((Shell32.IShellFolderViewDual2)window.Document).SelectedItems();
                     foreach (Shell32.FolderItem item in items)
                     {
-                        selected.Add(item.Path);
+                        if(!item.IsFolder) selected.Add(item.Path);
                     }
                 }
             }
             return selected;
+        }
+
+        private void SetSelectToFocusedItem()
+        {
+            Thread.Sleep(savedWaitingTimeForFocus);
+
+            IntPtr handle = GetForegroundWindow();
+            foreach (SHDocVw.InternetExplorer window in shell.Windows())
+            {
+                if (window.HWND == (int)handle)
+                {
+                    Shell32.FolderItem item = ((Shell32.IShellFolderViewDual2)window.Document).FocusedItem;
+                    if (item != null)
+                    {
+                        ((Shell32.IShellFolderViewDual2)window.Document).SelectItem(item, (int)SVSIF.SVSI_SELECT);
+                    }
+                }
+            }
         }
 
         private void ConfigurationForm_FormClosing(object sender, FormClosingEventArgs e)
@@ -230,6 +283,7 @@ namespace MoveWithHotKey
         {
             savedFolder = tb_path.Text;
             savedKey = tempKey;
+            savedWaitingTimeForFocus = tempWaitingTimeForFocus;
             savedModifier = (MoveWithHotKey.ModifierKeys)lb_ModifierKeys.Items[lb_ModifierKeys.SelectedIndex];
             keyboardHook.Dispose();
             InitializeKeyboardHook();
@@ -264,6 +318,20 @@ namespace MoveWithHotKey
             }
 
             e.Handled = true;
+        }
+
+        /// <summary>
+        /// The enumeration of possible modifiers.
+        /// </summary>
+        [Flags]
+        public enum SVSIF : uint
+        {
+            SVSI_SELECT = 1
+        }
+
+        private void cb_waitingTime_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            tempWaitingTimeForFocus = (int)cb_waitingTime.Items[cb_waitingTime.SelectedIndex];
         }
     }
 }

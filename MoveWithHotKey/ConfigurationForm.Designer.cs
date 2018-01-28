@@ -49,9 +49,12 @@
             this.lab_path = new System.Windows.Forms.Label();
             this.lab_header = new System.Windows.Forms.Label();
             this.lab_tip = new System.Windows.Forms.Label();
+            this.groupBox4 = new System.Windows.Forms.GroupBox();
+            this.cb_waitingTime = new System.Windows.Forms.ComboBox();
             this.groupBox1.SuspendLayout();
             this.groupBox2.SuspendLayout();
             this.groupBox3.SuspendLayout();
+            this.groupBox4.SuspendLayout();
             this.SuspendLayout();
             // 
             // notifyIcon
@@ -119,7 +122,7 @@
             // 
             // but_save
             // 
-            this.but_save.Location = new System.Drawing.Point(378, 294);
+            this.but_save.Location = new System.Drawing.Point(378, 357);
             this.but_save.Name = "but_save";
             this.but_save.Size = new System.Drawing.Size(75, 23);
             this.but_save.TabIndex = 12;
@@ -129,7 +132,7 @@
             // 
             // but_load
             // 
-            this.but_load.Location = new System.Drawing.Point(33, 294);
+            this.but_load.Location = new System.Drawing.Point(33, 357);
             this.but_load.Name = "but_load";
             this.but_load.Size = new System.Drawing.Size(75, 23);
             this.but_load.TabIndex = 13;
@@ -222,9 +225,9 @@
             this.lab_path.AutoSize = true;
             this.lab_path.Location = new System.Drawing.Point(3, 23);
             this.lab_path.Name = "lab_path";
-            this.lab_path.Size = new System.Drawing.Size(69, 13);
+            this.lab_path.Size = new System.Drawing.Size(62, 13);
             this.lab_path.TabIndex = 17;
-            this.lab_path.Text = "Path / Folder";
+            this.lab_path.Text = "Foldername";
             // 
             // lab_header
             // 
@@ -245,11 +248,31 @@
             this.lab_tip.TabIndex = 15;
             this.lab_tip.Text = "Minimize the config window to aktivate the hotkey";
             // 
+            // groupBox4
+            // 
+            this.groupBox4.Controls.Add(this.cb_waitingTime);
+            this.groupBox4.Location = new System.Drawing.Point(33, 294);
+            this.groupBox4.Name = "groupBox4";
+            this.groupBox4.Size = new System.Drawing.Size(420, 54);
+            this.groupBox4.TabIndex = 16;
+            this.groupBox4.TabStop = false;
+            this.groupBox4.Text = "Waiting Time for Focus (higher is better is slower)";
+            // 
+            // cb_waitingTime
+            // 
+            this.cb_waitingTime.FormattingEnabled = true;
+            this.cb_waitingTime.Location = new System.Drawing.Point(7, 20);
+            this.cb_waitingTime.Name = "cb_waitingTime";
+            this.cb_waitingTime.Size = new System.Drawing.Size(121, 21);
+            this.cb_waitingTime.TabIndex = 0;
+            this.cb_waitingTime.SelectedIndexChanged += new System.EventHandler(this.cb_waitingTime_SelectedIndexChanged);
+            // 
             // ConfigurationForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(466, 323);
+            this.ClientSize = new System.Drawing.Size(469, 386);
+            this.Controls.Add(this.groupBox4);
             this.Controls.Add(this.lab_tip);
             this.Controls.Add(this.lab_header);
             this.Controls.Add(this.groupBox2);
@@ -258,6 +281,8 @@
             this.Controls.Add(this.but_save);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.MaximizeBox = false;
+            this.MaximumSize = new System.Drawing.Size(485, 425);
+            this.MinimumSize = new System.Drawing.Size(485, 425);
             this.Name = "ConfigurationForm";
             this.Text = "Move to Folder with HotKey";
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.ConfigurationForm_FormClosing);
@@ -268,6 +293,7 @@
             this.groupBox2.PerformLayout();
             this.groupBox3.ResumeLayout(false);
             this.groupBox3.PerformLayout();
+            this.groupBox4.ResumeLayout(false);
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -294,6 +320,8 @@
         private System.Windows.Forms.Label lab_plus;
         private System.Windows.Forms.Label lab_header;
         private System.Windows.Forms.Label lab_tip;
+        private System.Windows.Forms.GroupBox groupBox4;
+        private System.Windows.Forms.ComboBox cb_waitingTime;
     }
 }
 
